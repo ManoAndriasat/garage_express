@@ -54,12 +54,11 @@ router.post('/login', async (req, res) => {
         );
         res.json({
             token,
-            mechanic: { 
+            user: {
                 firstname: mechanic.firstname, 
                 lastname: mechanic.lastname, 
                 email: mechanic.email, 
                 contact: mechanic.contact, 
-                speciality: mechanic.speciality 
             }
         });
 

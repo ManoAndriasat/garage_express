@@ -53,11 +53,11 @@ router.post('/login', async (req, res) => {
         );
         res.json({
             token,
-            manager: { 
+            user: { 
                 firstname: manager.firstname, 
                 lastname: manager.lastname, 
-                contact: manager.contact, 
-                email: manager.email 
+                email: manager.email,
+                contact: manager.contact
             }
         });
 
