@@ -196,7 +196,6 @@ exports.requestAppointment = async (req, res) => {
         
         await appointment.save();
         
-        
         res.status(201).json({ 
             msg: "Appointment requested successfully", 
             appointment 

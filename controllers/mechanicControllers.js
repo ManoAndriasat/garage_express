@@ -159,6 +159,23 @@ exports.getWaitingAppointments = async (req, res) => {
     }
 };
 
+
+exports.getAppointments = async (req, res) => {
+    try {
+        const currentDate = new Date();
+        const appointments = await Appointment.find({
+            'mechanic._id': req.user.id,
+            'status.mechanic': true,
+            'status.user': true,
+            'end_time': { $gt: currentDate.toISOString() }
+        });
+
+        res.json(appointments);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 exports.validateAppointment = async (req, res) => {
     try {
         const { appointmentId } = req.body;

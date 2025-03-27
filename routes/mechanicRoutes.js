@@ -9,6 +9,7 @@ router.post('/login', mechanicControllers.login);
 router.get('/info', authMiddleware, mechanicControllers.getInfo);
 router.get('/mechanics', authMiddleware, mechanicControllers.getMechanics);
 router.get('/waiting-appointments', authMiddleware, mechanicControllers.getWaitingAppointments);
+router.get('/appointments', authMiddleware, mechanicControllers.getAppointments);
 router.post('/validate-appointment', authMiddleware, mechanicControllers.validateAppointment);
 router.post('/delete-appointment', authMiddleware, mechanicControllers.deleteAppointment);
 router.post('/update-appointment-start-time', authMiddleware, mechanicControllers.updateAppointmentStartTime);
