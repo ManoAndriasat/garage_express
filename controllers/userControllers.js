@@ -130,7 +130,7 @@ exports.getMechanicUnavailableSlots = async (req, res) => {
 
 exports.requestAppointment = async (req, res) => {
     try {
-        const { car, mechanic, date, start_time, end_time, localisation, problem } = req.body;
+        const { user, car, mechanic, date, start_time, end_time, localisation, problem } = req.body;
         
         const mechanicExists = await Mechanic.findOne({ _id: mechanic._id });
         if (!mechanicExists) {
@@ -171,7 +171,13 @@ exports.requestAppointment = async (req, res) => {
         }
         
         const appointment = new Appointment({
-            user_id: req.user.id,
+            user: {
+                _id: user._id,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                contact: user.contact,
+                email: user.email,
+            },
             car: { 
                 _id: car._id,
                 brand: car.brand,
@@ -211,7 +217,7 @@ exports.getAppointments = async (req, res) => {
     try {
         const currentDate = new Date();
         const appointments = await Appointment.find({
-             user_id : req.user.id,
+            'user._id' : req.user.id,
             'end_time': { $gt: currentDate.toISOString() }
         });
 

@@ -1,9 +1,16 @@
 const mongoose = require("mongoose");
 const { getNextId } = require("../utils/counterUtils");
 
+
 const AppointmentSchema = new mongoose.Schema({
     _id: { type: String },
-    user_id: { type: String, required: true },
+    user: { 
+        _id : { type: String },
+        firstname: { type: String, required: true },
+        lastname: { type: String, required: true },
+        contact: { type: String, required: true },
+        email: { type: String, required: true },
+    },
     car: { 
         _id: { type: String },
         owner: { type: String, required: true },
