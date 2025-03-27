@@ -176,6 +176,24 @@ exports.getAppointments = async (req, res) => {
     }
 };
 
+exports.getHistoryAppointments = async (req, res) => {
+    try {
+        const currentDate = new Date();
+        const appointments = await Appointment.find({
+            'mechanic._id': req.user.id,
+            'status.mechanic': true,
+            'status.user': true,
+            'start_time': { $lt: currentDate.toISOString() }
+        })
+        .sort({ start_time: -1 })
+        .limit(10);
+
+        res.json(appointments);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 exports.validateAppointment = async (req, res) => {
     try {
         const { appointmentId } = req.body;
