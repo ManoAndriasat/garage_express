@@ -1,69 +1,21 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const userControllers = require('../controllers/userControllers');
+const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.post('/register', async (req, res) => {
-    try {
-        const { firstname, lastname, contact, email, password, address } = req.body;
+router.post('/register', userControllers.register);
+router.post('/login', userControllers.login);
 
-        let user = await User.findOne({ email });
-        if (user) return res.status(400).json({ msg: "User already exists" });
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        user = new User({
-            firstname,
-            lastname,
-            contact,
-            email,
-            password: hashedPassword,
-            address
-        });
-        await user.save();
-
-        res.status(201).json({ msg: "User registered successfully" });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-
-router.post('/login', async (req, res) => {
-    try {
-        const { contact, password } = req.body;
-
-        let user = await User.findOne({ contact });
-        if (!user) return res.status(400).json({ msg: "User not found" });
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
-
-        const token = jwt.sign(
-            { 
-                id: user._id, 
-                role: 0  
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: "5h" }  
-        );
-        res.json({
-            token,
-            user: {
-                firstname: user.firstname, 
-                lastname: user.lastname, 
-                contact: user.contact, 
-                email: user.email 
-            }
-        });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+router.get('/info', authMiddleware, userControllers.getUserInfo);
+router.post('/car', authMiddleware, userControllers.addCar);
+router.get('/cars', authMiddleware, userControllers.getAllCars);
+router.get('/unavailable-slots/:mechanic_id', authMiddleware, userControllers.getMechanicUnavailableSlots);
+router.post('/appointment', authMiddleware, userControllers.requestAppointment);
+router.get('/appointments', authMiddleware, userControllers.getAppointments);
+router.post('/validate-appointment', authMiddleware, userControllers.validateAppointment);
+router.post('/cancel-appointment', authMiddleware, userControllers.deleteAppointment);
+router.get('/repair-progress/:car_id', authMiddleware, userControllers.getRepairProgress);
+router.get('/invoices', authMiddleware, userControllers.getInvoiceHistory);
 
 module.exports = router;

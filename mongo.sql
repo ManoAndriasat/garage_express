@@ -81,7 +81,7 @@ db.mechanics.insertOne({
     lastname: "Doe",
     email: "",
     password: "hashed_password",
-    phone: "CST001456789",
+    contact: "CST001456789",
     speciality: "Toyota"
 });
 
@@ -92,7 +92,7 @@ db.managers.insertOne({
     lastname: "Doe",
     email: "",
     password: "hashed_password",
-    phone: "CST001456789"
+    contact: "CST001456789"
 });
 
 
