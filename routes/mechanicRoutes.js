@@ -4,17 +4,36 @@ const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.post('/register', mechanicControllers.register);
-router.post('/login', mechanicControllers.login);
-router.get('/info', authMiddleware, mechanicControllers.getInfo);
-router.get('/mechanics', authMiddleware, mechanicControllers.getMechanics);
-router.get('/waiting-appointments', authMiddleware, mechanicControllers.getWaitingAppointments);
-router.get('/appointments', authMiddleware, mechanicControllers.getAppointments);
-router.get('/history-appointments', authMiddleware, mechanicControllers.getHistoryAppointments);
-router.post('/validate-appointment', authMiddleware, mechanicControllers.validateAppointment);
-router.post('/delete-appointment', authMiddleware, mechanicControllers.deleteAppointment);
-router.post('/update-appointment-start-time', authMiddleware, mechanicControllers.updateAppointmentStartTime);
+const {
+  register,
+  login,
+  getInfo,
+  getMechanics,
+  getWaitingAppointments,
+  getAppointments,
+  getHistoryAppointments,
+  validateAppointment,
+  deleteAppointment,
+  updateAppointmentStartTime,
+  createRepair,
+  getOngoingRepairs,
+  addReparation,
+  updateReparation
+} = mechanicControllers;
+
+router.post('/register', register);
+router.post('/login', login);
+router.get('/info', authMiddleware, getInfo);
+router.get('/mechanics', authMiddleware, getMechanics);
+router.get('/waiting-appointments', authMiddleware, getWaitingAppointments);
+router.get('/appointments', authMiddleware, getAppointments);
+router.get('/history-appointments', authMiddleware, getHistoryAppointments);
+router.post('/validate-appointment', authMiddleware, validateAppointment);
+router.post('/delete-appointment', authMiddleware, deleteAppointment);
+router.post('/update-appointment-start-time', authMiddleware, updateAppointmentStartTime);
+router.post('/repair', authMiddleware, createRepair);
+router.get('/ongoing-repairs', authMiddleware, getOngoingRepairs);
+router.post('/add-reparation', authMiddleware, addReparation);
+router.post('/update-reparation', authMiddleware, updateReparation);
 
 module.exports = router;
-
-

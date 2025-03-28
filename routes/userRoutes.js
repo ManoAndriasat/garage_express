@@ -4,18 +4,37 @@ const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.post('/register', userControllers.register);
-router.post('/login', userControllers.login);
+const {
+    register,
+    login,
+    getUserInfo,
+    addCar,
+    getAllCars,
+    getMechanicUnavailableSlots,
+    requestAppointment,
+    getAppointments,
+    validateAppointment,
+    deleteAppointment,
+    getRepairProgress,
+    getInvoiceHistory,
+    acceptReparation,
+    getOngoingRepairs
+} = userControllers;
 
-router.get('/info', authMiddleware, userControllers.getUserInfo);
-router.post('/car', authMiddleware, userControllers.addCar);
-router.get('/cars', authMiddleware, userControllers.getAllCars);
-router.get('/unavailable-slots/:mechanic_id', authMiddleware, userControllers.getMechanicUnavailableSlots);
-router.post('/appointment', authMiddleware, userControllers.requestAppointment);
-router.get('/appointments', authMiddleware, userControllers.getAppointments);
-router.post('/validate-appointment', authMiddleware, userControllers.validateAppointment);
-router.post('/cancel-appointment', authMiddleware, userControllers.deleteAppointment);
-router.get('/repair-progress/:car_id', authMiddleware, userControllers.getRepairProgress);
-router.get('/invoices', authMiddleware, userControllers.getInvoiceHistory);
+router.post('/register', register);
+router.post('/login', login);
+
+router.get('/info', authMiddleware, getUserInfo);
+router.post('/car', authMiddleware, addCar);
+router.get('/cars', authMiddleware, getAllCars);
+router.get('/unavailable-slots/:mechanic_id', authMiddleware, getMechanicUnavailableSlots);
+router.post('/appointment', authMiddleware, requestAppointment);
+router.get('/appointments', authMiddleware, getAppointments);
+router.post('/validate-appointment', authMiddleware, validateAppointment);
+router.post('/cancel-appointment', authMiddleware, deleteAppointment);
+router.get('/repair-progress/:car_id', authMiddleware, getRepairProgress);
+router.get('/invoices', authMiddleware, getInvoiceHistory);
+router.post('/accept-reparation', authMiddleware, acceptReparation);
+router.get('/ongoing-repairs', authMiddleware, getOngoingRepairs);
 
 module.exports = router;

@@ -1,6 +1,7 @@
-const Manager = require('../models/Manager');
-const Appointment = require('../models/Appointment');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const Invoice = require('../models/Invoice');
+const Manager = require('../models/Manager');
 
 exports.register = async (req, res) => {
     try {
@@ -59,29 +60,7 @@ exports.login = async (req, res) => {
     }
 };
 
-exports.manageAppointments = async (req, res) => {
-    try {
-        const { appointmentId, action, mechanic_id, newDate } = req.body;
-        const appointment = await Appointment.findById(appointmentId);
 
-        if (!appointment) return res.status(404).json({ msg: "Appointment not found" });
-
-        if (action === "accept") {
-            appointment.status.manager = true;
-        } else if (action === "reject") {
-            appointment.status.manager = false;
-        } else if (action === "assignMechanic" && mechanic_id) {
-            appointment.mechanic_id = mechanic_id;
-        } else if (action === "changeDate" && newDate) {
-            appointment.date = newDate;
-        }
-
-        await appointment.save();
-        res.json({ msg: "Appointment updated successfully", appointment });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
 
 exports.validateInvoice = async (req, res) => {
     try {

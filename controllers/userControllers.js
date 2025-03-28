@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Car = require('../models/Car');
 const Mechanic = require('../models/Mechanic');
 const Appointment = require('../models/Appointment');
+const Repair = require('../models/Repair');
 
 exports.register = async (req, res) => {
     try {
@@ -171,27 +172,9 @@ exports.requestAppointment = async (req, res) => {
         }
         
         const appointment = new Appointment({
-            user: {
-                _id: user._id,
-                firstname: user.firstname,
-                lastname: user.lastname,
-                contact: user.contact,
-                email: user.email,
-            },
-            car: { 
-                _id: car._id,
-                brand: car.brand,
-                owner: car.owner,
-                model: car.model,
-                year: car.year,
-                vin: car.vin
-            },
-            mechanic: { 
-                _id: mechanic._id,
-                firstname: mechanic.firstname,
-                lastname: mechanic.lastname,
-                contact: mechanic.contact
-            },
+            user: user,
+            car: car,
+            mechanic:mechanic,
             date: new Date(),
             start_time: start_time,
             end_time: end_time,
@@ -273,5 +256,114 @@ exports.getInvoiceHistory = async (req, res) => {
         res.json(invoices);
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getOngoingRepairs = async (req, res) => {
+    try {
+        const currentDate = new Date().toISOString().split('T')[0];
+        
+        const repairs = await Repair.find({
+            'owner._id': req.user.id
+        });
+        
+        res.json(repairs);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.acceptReparation = async (req, res) => {
+    try {
+        const { repair_id, reparation_index } = req.body;
+        if (!repair_id || reparation_index === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: "repair_id and reparation_index are required"
+            });
+        }
+
+        const updatedRepair = await Repair.findOneAndUpdate(
+            {
+                '_id': repair_id,
+                'owner._id': req.user.id,
+                [`reparation.${reparation_index}.status.mechanic`]: true
+            },
+            {
+                $set: {
+                    [`reparation.${reparation_index}.status.user`]: true
+                }
+            },
+            { new: true }
+        );
+
+        if (!updatedRepair) {
+            return res.status(404).json({
+                success: false,
+                message: "Repair not found or not authorized"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: updatedRepair
+        });
+
+    } catch (error) {
+        console.error("Error accepting reparation:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
+
+
+exports.updatePriceAsCustomer = async (req, res) => {
+    try {
+        const { repair_id, reparation_index, new_price } = req.body;
+
+        if (!repair_id || reparation_index === undefined || !new_price) {
+            return res.status(400).json({
+                success: false,
+                message: "repair_id, reparation_index and new_price are required"
+            });
+        }
+
+        const updatedRepair = await Repair.findOneAndUpdate(
+            {
+                '_id': repair_id,
+                'owner._id': req.user.id
+            },
+            {
+                $set: {
+                    [`reparation.${reparation_index}.price`]: new_price,
+                    [`reparation.${reparation_index}.status.user`]: true,
+                    [`reparation.${reparation_index}.status.mechanic`]: false
+                }
+            },
+            { new: true }
+        );
+
+        if (!updatedRepair) {
+            return res.status(404).json({
+                success: false,
+                message: "Repair not found or not authorized"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: updatedRepair
+        });
+
+    } catch (error) {
+        console.error("Error updating price as customer:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
     }
 };

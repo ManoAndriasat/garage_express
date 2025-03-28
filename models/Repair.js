@@ -3,11 +3,32 @@ const { getNextId } = require("../utils/counterUtils");
 
 const RepairSchema = new mongoose.Schema({
     _id: { type: String },
-    car_id: { type: String, required: true },
-    mechanic_id: { type: String, required: true },
+    appointment_id: { type: String, required: true, unique: true },
+    owner: { 
+        _id : { type: String },
+        firstname: { type: String, required: true },
+        lastname: { type: String, required: true },
+        contact: { type: String, required: true },
+        email: { type: String, required: true },
+    },
+    car: { 
+        _id: { type: String },
+        owner: { type: String, required: true },
+        brand: { type: String, required: true },
+        model: { type: String, required: true },
+        year: { type: Number, required: true },
+        vin: { type: String, required: true },
+    },
+    mechanic: {  
+        _id: { type: String, required: true },
+        firstname: { type: String, required: true },
+        lastname: { type: String, required: true },
+        contact: { type: String, required: true }
+    },
     reparation: [{
         type: { type: String, required: true },
         material: { type: String },
+        price: { type: Number, required: true },
         description: { type: String, required: true },
         status: {
             mechanic: { type: Boolean, default: true },

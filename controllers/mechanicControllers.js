@@ -234,11 +234,9 @@ exports.updateAppointmentStartTime = async (req, res) => {
             return res.status(404).json({ msg: "Appointment not found" });
         }
 
-        // Parse the date in local timezone (don't convert to UTC)
         const startTime = new Date(newStartTime);
         const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour
 
-        // Store dates as ISO strings but keep local time
         appointment.start_time = startTime.toISOString();
         appointment.end_time = endTime.toISOString();
         appointment.status.user = false;
@@ -253,5 +251,151 @@ exports.updateAppointmentStartTime = async (req, res) => {
     } catch (err) {
         console.error("Error updating appointment:", err);
         res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createRepair = async (req, res) => {
+    try {
+        const existingRepair = await Repair.findOne({ appointment_id: req.body.appointment_id });
+        if (existingRepair) {
+            return res.status(400).json({ 
+                error: "Repair already exists for this appointment",
+                code: "DUPLICATE_APPOINTMENT" 
+            });
+        }
+
+        const repair = await Repair.create(req.body);
+        res.status(201).json(repair);
+    } catch (error) {
+        if (error.code === 11000) { 
+            res.status(400).json({ 
+                error: "Appointment ID must be unique",
+                code: "DUPLICATE_KEY" 
+            });
+        } else {
+            res.status(500).json({ 
+                error: error.message,
+                code: "SERVER_ERROR" 
+            });
+        }
+    }
+};
+
+exports.getOngoingRepairs = async (req, res) => {
+    try {
+        const currentDate = new Date().toISOString().split('T')[0];
+        
+        const repairs = await Repair.find({
+            'mechanic._id': req.user.id
+        });
+        
+        res.json(repairs);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.addReparation = async (req, res) => {
+    try {
+        const { repair_id, type, description, start, end, material, price } = req.body;
+
+        // Validate required fields
+        if (!repair_id || !type || !description || !start || !end) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields"
+            });
+        }
+        
+        const newReparation = {
+            type,
+            material: material || undefined,
+            description,
+            price,
+            status: {
+                mechanic: true,
+                user: false
+            },
+            start: new Date(start).toISOString(),
+            end: new Date(end).toISOString()
+        };
+
+        const updatedRepair = await Repair.findByIdAndUpdate(
+            repair_id,
+            { $push: { reparation: newReparation } },
+            { new: true }
+        );
+
+        if (!updatedRepair) {
+            return res.status(404).json({
+                success: false,
+                message: "Repair not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: updatedRepair
+        });
+
+    } catch (error) {
+        console.error("Error adding reparation:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
+
+exports.updateReparation = async (req, res) => {
+    try {
+        const { repair_id, reparation_index, updates } = req.body;
+
+        if (!repair_id || reparation_index === undefined || !updates) {
+            return res.status(400).json({
+                success: false,
+                message: "repair_id, reparation_index and updates are required"
+            });
+        }
+
+        // Create the update object dynamically
+        const updateObj = { $set: {} };
+        for (const [key, value] of Object.entries(updates)) {
+            updateObj.$set[`reparation.${reparation_index}.${key}`] = value;
+        }
+
+        // Always update the status when making changes
+        updateObj.$set[`reparation.${reparation_index}.status.mechanic`] = true;
+        updateObj.$set[`reparation.${reparation_index}.status.user`] = false;
+
+        const updatedRepair = await Repair.findOneAndUpdate(
+            {
+                '_id': repair_id,
+                'mechanic._id': req.user.id
+            },
+            updateObj,
+            { new: true }
+        );
+
+        if (!updatedRepair) {
+            return res.status(404).json({
+                success: false,
+                message: "Repair not found or not authorized"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: updatedRepair
+        });
+
+    } catch (error) {
+        console.error("Error updating reparation:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
     }
 };
