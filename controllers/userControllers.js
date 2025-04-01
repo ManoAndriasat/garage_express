@@ -462,7 +462,6 @@ exports.getClientInvoices = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
 exports.downloadInvoicePDF = async (req, res) => {
     try {
         const { invoice_id } = req.body;
@@ -476,112 +475,224 @@ exports.downloadInvoicePDF = async (req, res) => {
             return res.status(404).json({ error: 'Invoice not found' });
         }
         
-        const doc = new PDFDocument({ size: 'A4', margin: 40 }); // Reduced margin
+        // Create PDF with smaller margins
+        const doc = new PDFDocument({ 
+            size: 'A4', 
+            margin: 40,
+            bufferPages: true  // For page numbering
+        });
+        
         const filename = `invoice_${invoice._id}.pdf`;
         
+        // Set response headers
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         doc.pipe(res);
         
-        // Colors
-        const primaryColor = '#3498db';
-        const secondaryColor = '#2980b9';
-        const darkColor = '#2c3e50';
-        const lightColor = '#ecf0f1';
+        // Design System
+        const colors = {
+            primary: '#3498db',
+            secondary: '#2980b9',
+            dark: '#2c3e50',
+            light: '#f8f9fa',
+            accent: '#e74c3c',
+            text: '#333333',
+            subtle: '#95a5a6'
+        };
         
-        // Compact header
-        doc.rect(0, 0, doc.page.width, 60) // Smaller header
-           .fill(primaryColor);
+        const fonts = {
+            header: 24,
+            subheader: 14,
+            body: 10,
+            small: 8,
+            emphasis: 12
+        };
         
-        doc.fontSize(24) // Slightly smaller font
-           .fillColor('#fff')
+        // --- HEADER SECTION ---
+        // Blue header background
+        doc.rect(0, 0, doc.page.width, 70)
+           .fill(colors.primary);
+        
+        // Invoice title
+        doc.fontSize(fonts.header)
+           .fillColor('#ffffff')
+           .font('Helvetica-Bold')
            .text('INVOICE', { 
                align: 'center',
-               width: doc.page.width - 100,
-               height: 60,
-               lineGap: 0
+               width: doc.page.width,
+               height: 70,
+               lineGap: 5
            });
         
-        // Invoice info right next to header
-        doc.fontSize(10)
-           .fillColor(darkColor)
-           .text(`Invoice #: ${invoice._id}`, 400, 70, { align: 'right' });
-        doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, 400, 85, { align: 'right' });
+        // Invoice metadata (right-aligned)
+        doc.fontSize(fonts.small)
+           .fillColor(colors.light)
+           .text(`Invoice #: ${invoice._id}`, { 
+               align: 'right',
+               width: 200,
+               x: doc.page.width - 50 - 200,
+               y: 75
+           });
         
-        // Company info - compact
-        doc.fontSize(10)
-           .text('Mano GARAGE', 50, 70);
-        doc.text('Phone: +261 34 33 733 51', 50, 85);
-        doc.text('Email: ma.andriasat@gmail.com', 50, 100);
+        doc.text(`Date: ${new Date(invoice.date).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        })}`, { 
+            align: 'right',
+            width: 200,
+            x: doc.page.width - 50 - 200,
+            y: 90
+        });
         
-        // Customer and car info side by side with less padding
-        const infoBoxY = 120;
+        // Company info (left-aligned)
+        doc.fontSize(fonts.body)
+           .fillColor(colors.dark)
+           .font('Helvetica-Bold')
+           .text('Mano GARAGE', 50, 75);
         
-        // Customer info - compact
-        doc.rect(50, infoBoxY, 250, 60) // Smaller box
-           .fill(lightColor);
-        doc.fontSize(10)
-           .fillColor(darkColor)
-           .text('BILL TO:', 60, infoBoxY + 10);
-        doc.fontSize(9)
-           .text(`${invoice.owner.firstname} ${invoice.owner.lastname}`, 60, infoBoxY + 25);
-        doc.text(`Contact: ${invoice.owner.contact}`, 60, infoBoxY + 40);
+        doc.font('Helvetica')
+           .text('Phone: +261 34 33 733 51', 50, 90);
+        doc.text('Email: ma.andriasat@gmail.com', 50, 105);
         
-        // Car info - compact
-        doc.rect(350, infoBoxY, 200, 60) // Smaller box
-           .fill(lightColor);
-        doc.fontSize(10)
-           .text('VEHICLE DETAILS:', 360, infoBoxY + 10);
-        doc.fontSize(9)
-           .text(`${invoice.car.brand} ${invoice.car.model}`, 360, infoBoxY + 25);
+        // --- CLIENT & VEHICLE INFO ---
+        const infoSectionY = 130;
         
-        // Reparations table - tighter
-        const tableStartY = infoBoxY + 70;
-        doc.fontSize(12)
-           .fillColor(secondaryColor)
+        // Client info box
+        doc.rect(50, infoSectionY, 250, 80)
+           .fill(colors.light)
+           .stroke(colors.primary, 0.5);
+        
+        doc.fontSize(fonts.body)
+           .fillColor(colors.primary)
+           .font('Helvetica-Bold')
+           .text('BILL TO:', 60, infoSectionY + 15);
+        
+        doc.font('Helvetica')
+           .fillColor(colors.text)
+           .text(`${invoice.owner.firstname} ${invoice.owner.lastname}`, 60, infoSectionY + 35);
+        doc.text(`Contact: ${invoice.owner.contact}`, 60, infoSectionY + 50);
+        
+        // Vehicle info box
+        doc.rect(350, infoSectionY, 200, 80)
+           .fill(colors.light)
+           .stroke(colors.primary, 0.5);
+        
+        doc.fontSize(fonts.body)
+           .fillColor(colors.primary)
+           .font('Helvetica-Bold')
+           .text('VEHICLE DETAILS:', 360, infoSectionY + 15);
+        
+        doc.font('Helvetica')
+           .fillColor(colors.text)
+           .text(`${invoice.car.brand} ${invoice.car.model}`, 360, infoSectionY + 35);
+        
+        if (invoice.car.plate) {
+            doc.text(`Plate: ${invoice.car.plate}`, 360, infoSectionY + 50);
+        }
+        
+        // --- REPARATION TABLE ---
+        const tableStartY = infoSectionY + 100;
+        
+        // Table title
+        doc.fontSize(fonts.subheader)
+           .fillColor(colors.primary)
+           .font('Helvetica-Bold')
            .text('REPARATION DETAILS', 50, tableStartY);
         
         // Table header
-        doc.fontSize(9)
-           .fillColor('#fff')
-           .rect(50, tableStartY + 20, doc.page.width - 100, 15) // Smaller header
-           .fill(secondaryColor);
+        doc.rect(50, tableStartY + 25, doc.page.width - 100, 20)
+           .fill(colors.secondary)
+           .stroke(colors.secondary);
         
-        doc.text('No.', 60, tableStartY + 23);
-        doc.text('Description', 100, tableStartY + 23);
-        doc.text('Price', doc.page.width - 150, tableStartY + 23, { width: 100, align: 'right' });
-        
-        // Table rows - tighter
-        let yPos = tableStartY + 40;
-        invoice.reparation.forEach((item, index) => {
-            if (index % 2 === 0) {
-                doc.rect(50, yPos - 8, doc.page.width - 100, 15) // Smaller rows
-                   .fill('#f8f9fa');
-            }
-            
-            doc.fontSize(9)
-               .fillColor(darkColor)
-               .text(`${index + 1}.`, 60, yPos);
-            doc.text(item.type, 100, yPos);
-            doc.text(`$${item.price.toFixed(2)}`, doc.page.width - 150, yPos, { width: 100, align: 'right' });
-            yPos += 15; // Smaller row height
+        doc.fontSize(fonts.body)
+           .fillColor('#ffffff')
+           .font('Helvetica-Bold')
+           .text('No.', 60, tableStartY + 30);
+        doc.text('Description', 100, tableStartY + 30);
+        doc.text('Material', 300, tableStartY + 30);
+        doc.text('Price (MGA)', doc.page.width - 150, tableStartY + 30, { 
+            width: 100, 
+            align: 'right' 
         });
         
-        // Total section - compact
-        const totalY = yPos + 10;
-        doc.rect(doc.page.width - 250, totalY, 200, 20) // Smaller box
-           .fill(lightColor);
+        // Table rows
+        let yPos = tableStartY + 50;
+        let subtotal = 0;
         
-        doc.fontSize(10)
-           .fillColor(darkColor)
-           .text('TOTAL:', doc.page.width - 250, totalY + 5, { width: 150, align: 'right' });
-        doc.text(`$${invoice.total.toFixed(2)}`, doc.page.width - 100, totalY + 5, { width: 100, align: 'right' });
+        invoice.reparation.forEach((item, index) => {
+            // Alternate row colors
+            const rowColor = index % 2 === 0 ? '#ffffff' : colors.light;
+            doc.rect(50, yPos - 10, doc.page.width - 100, 20)
+               .fill(rowColor)
+               .stroke('#eeeeee');
+            
+            doc.fontSize(fonts.body)
+               .fillColor(colors.text)
+               .font('Helvetica')
+               .text(`${index + 1}.`, 60, yPos);
+            
+            doc.text(item.type, 100, yPos);
+            doc.text(item.material || '-', 300, yPos);
+            
+            doc.font('Helvetica-Bold')
+               .text(`${parseFloat(item.price).toFixed(2)}`, doc.page.width - 150, yPos, { 
+                   width: 100, 
+                   align: 'right' 
+               });
+            
+            subtotal += parseFloat(item.price);
+            yPos += 20;
+        });
         
-        // Compact footer
-        doc.fontSize(8)
-           .fillColor('#7f8c8d')
-           .text('Thank you for your business!', { align: 'center', y: doc.page.height - 30 });
+        // --- TOTAL SECTION ---
+        const totalY = yPos + 20;
+        const totalBoxWidth = 200;
+        const totalBoxX = doc.page.width - totalBoxWidth - 50;
         
+        // Total box with border
+        doc.rect(totalBoxX, totalY, totalBoxWidth, 60)
+           .fill(colors.light)
+           .stroke(colors.primary, 0.5);
+        
+        // Subtotal
+        doc.fontSize(fonts.body)
+           .fillColor(colors.text)
+           .font('Helvetica')
+           .text('Subtotal:', totalBoxX + 20, totalY + 15, { 
+               width: 120, 
+               align: 'right' 
+           });
+        
+        doc.text(`${subtotal.toFixed(2)} MGA`, totalBoxX + 140, totalY + 15, { 
+            width: 50, 
+            align: 'right' 
+        });
+        
+        // Total with emphasis
+        doc.fontSize(fonts.emphasis)
+           .fillColor(colors.primary)
+           .font('Helvetica-Bold')
+           .text('TOTAL:', totalBoxX + 20, totalY + 35, { 
+               width: 120, 
+               align: 'right' 
+           });
+        
+        doc.text(`${invoice.total.toFixed(2)} MGA`, totalBoxX + 140, totalY + 35, { 
+            width: 50, 
+            align: 'right' 
+        });
+        
+        // Page numbering
+        const pages = doc.bufferedPageRange();
+        for (let i = 0; i < pages.count; i++) {
+            doc.switchToPage(i);
+            doc.fontSize(fonts.small)
+               .fillColor(colors.subtle)
+               .text(`Page ${i + 1} of ${pages.count}`, doc.page.width - 100, doc.page.height - 20);
+        }
+        
+        // Finalize PDF
         doc.end();
         
     } catch (error) {
