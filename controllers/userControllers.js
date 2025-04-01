@@ -462,116 +462,149 @@ exports.getClientInvoices = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
 exports.downloadInvoicePDF = async (req, res) => {
     try {
         const { invoice_id } = req.body;
         
+        // Find the invoice
         const invoice = await Invoice.findOne({ 
             _id: invoice_id,
-            'owner._id': req.user.id
+            'owner._id': req.user.id // Ensure user owns this invoice
         });
         
         if (!invoice) {
             return res.status(404).json({ error: 'Invoice not found' });
         }
         
+        // Create PDF
         const doc = new PDFDocument({ size: 'A4', margin: 50 });
         const filename = `invoice_${invoice._id}.pdf`;
         
+        // Set response headers
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         
+        // Pipe PDF to response
         doc.pipe(res);
         
-        // Header with logo and title
-        doc.image('path/to/your/logo.png', 50, 45, { width: 50 })
-           .fillColor('#444444')
-           .fontSize(20)
-           .text('INVOICE', 200, 50, { align: 'right' })
-           .fontSize(10)
-           .text(`Invoice #${invoice.invoiceNumber}`, 200, 80, { align: 'right' })
-           .moveDown();
+        // Colors
+        const primaryColor = '#3498db';
+        const secondaryColor = '#2980b9';
+        const darkColor = '#2c3e50';
+        const lightColor = '#ecf0f1';
         
-        // Horizontal line
-        doc.strokeColor('#aaaaaa')
-           .lineWidth(1)
-           .moveTo(50, 120)
-           .lineTo(550, 120)
-           .stroke();
+        // Header with background
+        doc.rect(0, 0, doc.page.width, 80)
+           .fill(primaryColor);
         
-        // Customer information
+        doc.fontSize(28)
+           .fillColor('#fff')
+           .text('INVOICE', { 
+               align: 'center',
+               width: doc.page.width - 100,
+               height: 80,
+               lineGap: 5
+           });
+        
+        // Invoice info section
+        doc.moveDown(2);
+        doc.fontSize(10)
+           .fillColor(darkColor)
+           .text(`Invoice #: ${invoice._id}`, { align: 'right' });
+        doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, { align: 'right' });
+        
+        // Company info
+        doc.moveDown();
         doc.fontSize(12)
-           .text('BILL TO:', 50, 140)
-           .font('Helvetica-Bold')
-           .text(`${invoice.owner.firstname} ${invoice.owner.lastname}`, 50, 160)
-           .font('Helvetica')
-           .text(invoice.owner.contact, 50, 180)
-           .text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, 400, 140, { align: 'right' });
+           .fillColor(darkColor)
+           .text('Your Company Name', { underline: true });
+        doc.text('123 Business Street');
+        doc.text('City, State 10001');
+        doc.text('Phone: (123) 456-7890');
+        doc.text('Email: contact@yourcompany.com');
         
-        // Vehicle information
-        doc.moveTo(50, 220)
-           .lineTo(550, 220)
-           .stroke()
-           .font('Helvetica-Bold')
-           .text('VEHICLE DETAILS', 50, 230)
-           .font('Helvetica')
-           .text(`${invoice.car.brand} ${invoice.car.model} (${invoice.car.year})`, 50, 250)
-           .text(`VIN: ${invoice.car.vin || 'N/A'}`, 50, 270);
+        // Customer info box
+        doc.moveDown();
+        doc.rect(50, doc.y, 250, 80)
+           .fill(lightColor);
         
-        // Reparations table header
-        doc.moveTo(50, 310)
-           .lineTo(550, 310)
-           .stroke()
-           .font('Helvetica-Bold')
-           .text('#', 50, 320)
-           .text('DESCRIPTION', 100, 320)
-           .text('PRICE', 450, 320, { width: 100, align: 'right' })
-           .moveTo(50, 340)
-           .lineTo(550, 340)
-           .stroke();
+        doc.fontSize(12)
+           .fillColor(darkColor)
+           .text('BILL TO:', 60, doc.y + 10, { underline: true });
+        doc.fontSize(10)
+           .text(`${invoice.owner.firstname} ${invoice.owner.lastname}`, 60, doc.y + 30);
+        doc.text(`Contact: ${invoice.owner.contact}`, 60, doc.y + 45);
         
-        // Reparations items
-        let y = 350;
+        // Car info box
+        doc.rect(350, doc.y, 200, 80)
+           .fill(lightColor);
+        
+        doc.fontSize(12)
+           .fillColor(darkColor)
+           .text('VEHICLE DETAILS:', 360, doc.y + 10, { underline: true });
+        doc.fontSize(10)
+           .text(`${invoice.car.brand} ${invoice.car.model}`, 360, doc.y + 30);
+        // Add more car details if available
+        
+        // Reparations table
+        doc.moveDown(3);
+        doc.fontSize(14)
+           .fillColor(secondaryColor)
+           .text('REPARATION DETAILS', { underline: true });
+        
+        // Table header
+        doc.moveDown(0.5);
+        doc.fontSize(10)
+           .fillColor('#fff')
+           .rect(50, doc.y, doc.page.width - 100, 20)
+           .fill(secondaryColor);
+        
+        doc.text('No.', 60, doc.y + 5);
+        doc.text('Description', 100, doc.y + 5);
+        doc.text('Price', doc.page.width - 150, doc.y + 5, { width: 100, align: 'right' });
+        
+        // Table rows
+        let yPos = doc.y + 25;
         invoice.reparation.forEach((item, index) => {
-            doc.font('Helvetica')
-               .text(`${index + 1}`, 50, y)
-               .text(item.type, 100, y)
-               .text(`$${item.price.toFixed(2)}`, 450, y, { width: 100, align: 'right' });
-            
-            // Add description if exists
-            if (item.description) {
-                doc.font('Helvetica', 8)
-                   .fillColor('#666666')
-                   .text(item.description, 100, y + 15, { width: 350 })
-                   .fillColor('#444444');
-                y += 20;
+            // Alternate row colors
+            if (index % 2 === 0) {
+                doc.rect(50, yPos - 5, doc.page.width - 100, 20)
+                   .fill('#f8f9fa');
             }
             
-            y += 30;
+            doc.fontSize(10)
+               .fillColor(darkColor)
+               .text(`${index + 1}.`, 60, yPos);
+            doc.text(item.type, 100, yPos);
+            doc.text(`$${item.price.toFixed(2)}`, doc.page.width - 150, yPos, { width: 100, align: 'right' });
+            yPos += 20;
         });
         
         // Total section
-        doc.moveTo(50, y)
-           .lineTo(550, y)
-           .stroke()
-           .font('Helvetica-Bold')
-           .text('SUBTOTAL', 350, y + 20)
-           .text(`$${invoice.subtotal.toFixed(2)}`, 450, y + 20, { width: 100, align: 'right' })
-           .text('TAX', 350, y + 40)
-           .text(`$${(invoice.total - invoice.subtotal).toFixed(2)}`, 450, y + 40, { width: 100, align: 'right' })
-           .moveTo(350, y + 60)
-           .lineTo(550, y + 60)
-           .stroke()
-           .fontSize(14)
-           .text('TOTAL', 350, y + 70)
-           .text(`$${invoice.total.toFixed(2)}`, 450, y + 70, { width: 100, align: 'right' });
+        doc.moveDown(2);
+        doc.rect(doc.page.width - 250, doc.y, 200, 30)
+           .fill(lightColor);
+        
+        doc.fontSize(12)
+           .fillColor(darkColor)
+           .text('Subtotal:', doc.page.width - 250, doc.y + 8, { width: 150, align: 'right' });
+        doc.text(`$${invoice.total.toFixed(2)}`, doc.page.width - 100, doc.y + 8, { width: 100, align: 'right' });
+        
+        
+        doc.fontSize(14)
+           .fillColor(secondaryColor)
+           .text('TOTAL:', doc.page.width - 250, doc.y + 50, { width: 150, align: 'right', underline: true });
+        doc.fontSize(14)
+           .text(`$${invoice.total.toFixed(2)}`, doc.page.width - 100, doc.y + 50, { width: 100, align: 'right', underline: true });
         
         // Footer
+        doc.moveDown(4);
         doc.fontSize(8)
-           .text('Thank you for your business!', 50, 750, { align: 'center' })
-           .text('If you have any questions about this invoice, please contact us', 50, 770, { align: 'center' });
+           .fillColor('#7f8c8d')
+           .text('Thank you for your business!', { align: 'center' });
+        doc.text('Terms & Conditions: Payment due within 30 days.', { align: 'center' });
         
+        // Finalize PDF
         doc.end();
         
     } catch (error) {
