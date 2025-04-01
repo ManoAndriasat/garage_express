@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const Mechanic = require('../models/Mechanic');
 const Appointment = require('../models/Appointment');
 const Repair = require('../models/Repair');
-const Invoice = require('../models/Invoice');
 
 exports.register = async (req, res) => {
     try {
@@ -116,24 +115,7 @@ exports.addRepairDetails = async (req, res) => {
     }
 };
 
-exports.createInvoice = async (req, res) => {
-    try {
-        const { repairId, date, car_id, mechanicInCharge, details } = req.body;
 
-        const invoice = new Invoice({
-            repair_id: repairId,
-            date,
-            car_id: car_id,
-            mechanic_in_charge: mechanicInCharge,
-            details
-        });
-        await invoice.save();
-
-        res.status(201).json({ msg: "Invoice created successfully", invoice });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
 
 exports.getMechanics = async (req, res) => {
     try {
@@ -264,7 +246,15 @@ exports.createRepair = async (req, res) => {
             });
         }
 
-        const repair = await Repair.create(req.body);
+        const repairData = {
+            ...req.body,
+            isfinished: {
+                mechanic: false,
+                user: false
+            }
+        };
+
+        const repair = await Repair.create(repairData);
         res.status(201).json(repair);
     } catch (error) {
         if (error.code === 11000) { 
@@ -283,10 +273,11 @@ exports.createRepair = async (req, res) => {
 
 exports.getOngoingRepairs = async (req, res) => {
     try {
-        const currentDate = new Date().toISOString().split('T')[0];
-        
         const repairs = await Repair.find({
-            'mechanic._id': req.user.id
+            'mechanic._id': req.user.id,
+            $and: [
+                { 'isfinished.user': false }
+            ]
         });
         
         res.json(repairs);
@@ -397,5 +388,25 @@ exports.updateReparation = async (req, res) => {
             message: "Internal server error",
             error: error.message
         });
+    }
+};
+
+exports.finishRepair = async (req, res) => {
+    try {
+        const { _id } = req.body;
+
+        const updatedRepair = await Repair.findOneAndUpdate(
+            { _id },
+            { $set: { 'isfinished.mechanic': true } },
+            { new: true }
+        );
+
+        if (!updatedRepair) {
+            return res.status(404).json({ error: 'Repair not found' });
+        }
+
+        res.json(updatedRepair);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 };

@@ -16,9 +16,11 @@ const {
     validateAppointment,
     deleteAppointment,
     getRepairProgress,
-    getInvoiceHistory,
     acceptReparation,
-    getOngoingRepairs
+    getOngoingRepairs,
+    finishRepair,
+    getClientInvoices,
+downloadInvoicePDF,
 } = userControllers;
 
 router.post('/register', register);
@@ -33,8 +35,10 @@ router.get('/appointments', authMiddleware, getAppointments);
 router.post('/validate-appointment', authMiddleware, validateAppointment);
 router.post('/cancel-appointment', authMiddleware, deleteAppointment);
 router.get('/repair-progress/:car_id', authMiddleware, getRepairProgress);
-router.get('/invoices', authMiddleware, getInvoiceHistory);
 router.post('/accept-reparation', authMiddleware, acceptReparation);
 router.get('/ongoing-repairs', authMiddleware, getOngoingRepairs);
+router.post('/finish-repair', authMiddleware, finishRepair);
+router.get('/invoices', authMiddleware, getClientInvoices);
+router.post('/download-invoice', authMiddleware, downloadInvoicePDF);
 
 module.exports = router;

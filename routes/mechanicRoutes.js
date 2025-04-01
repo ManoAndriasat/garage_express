@@ -18,7 +18,8 @@ const {
   createRepair,
   getOngoingRepairs,
   addReparation,
-  updateReparation
+  updateReparation,
+  finishRepair,
 } = mechanicControllers;
 
 router.post('/register', register);
@@ -35,5 +36,6 @@ router.post('/repair', authMiddleware, createRepair);
 router.get('/ongoing-repairs', authMiddleware, getOngoingRepairs);
 router.post('/add-reparation', authMiddleware, addReparation);
 router.post('/update-reparation', authMiddleware, updateReparation);
+router.post('/finish-repair', authMiddleware, finishRepair);
 
 module.exports = router;

@@ -1,6 +1,5 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const Invoice = require('../models/Invoice');
 const Manager = require('../models/Manager');
 
 exports.register = async (req, res) => {
@@ -55,24 +54,6 @@ exports.login = async (req, res) => {
                 contact: manager.contact
             }
         });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
-
-
-
-exports.validateInvoice = async (req, res) => {
-    try {
-        const { invoiceId } = req.body;
-        const invoice = await Invoice.findById(invoiceId);
-
-        if (!invoice) return res.status(404).json({ msg: "Invoice not found" });
-
-        invoice.validated = true;
-        await invoice.save();
-
-        res.json({ msg: "Invoice validated successfully", invoice });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

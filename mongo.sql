@@ -5,8 +5,7 @@ db.counters.insertMany([
     { _id: "mechanic_id", sequence_value: 0 },
     { _id: "manager_id", sequence_value: 0 },
     { _id: "appointment_id", sequence_value: 0 },
-    { _id: "repair_id", sequence_value: 0 },
-    { _id: "invoice_id", sequence_value: 0 }
+    { _id: "repair_id", sequence_value: 0 }
 ]);
 
 
@@ -147,29 +146,6 @@ db.repairs.insertOne({
             },
             start: "2020-12-12:10:00",
             end: "2020-12-13:10:00",
-        }
-    ]
-});
-
-
-db.invoices.insertOne({
-    _id: "I" + String(getNextId("invoice_id")).padStart(3, "0"),
-    repair_id: "",
-    date: "2020-12-12:10:00",
-    car_id: "",
-    mechanic_in_charge: "",
-    details: [
-        {
-            material: "engine",
-            type: "fix",
-            price: 250000,
-            devis: "MGA",
-        },
-        {
-            material: "V8 engine",
-            type: "buy",
-            price: 2500000,
-            devis: "MGA",
         }
     ]
 });

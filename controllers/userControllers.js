@@ -5,6 +5,9 @@ const Car = require('../models/Car');
 const Mechanic = require('../models/Mechanic');
 const Appointment = require('../models/Appointment');
 const Repair = require('../models/Repair');
+const Invoice = require('../models/Invoice');
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
 
 exports.register = async (req, res) => {
     try {
@@ -250,21 +253,14 @@ exports.getRepairProgress = async (req, res) => {
     }
 };
 
-exports.getInvoiceHistory = async (req, res) => {
-    try {
-        const invoices = await Invoice.find({ user_id: req.user.id });
-        res.json(invoices);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
 
 exports.getOngoingRepairs = async (req, res) => {
     try {
-        const currentDate = new Date().toISOString().split('T')[0];
-        
         const repairs = await Repair.find({
-            'owner._id': req.user.id
+            'owner._id': req.user.id,
+            $and: [
+                { 'isfinished.user': false }
+            ]
         });
         
         res.json(repairs);
@@ -272,6 +268,8 @@ exports.getOngoingRepairs = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+
 
 exports.acceptReparation = async (req, res) => {
     try {
@@ -365,5 +363,168 @@ exports.updatePriceAsCustomer = async (req, res) => {
             message: "Internal server error",
             error: error.message
         });
+    }
+};
+
+exports.finishRepair = async (req, res) => {
+    try {
+        const { _id } = req.body;
+        const currentDate = new Date().toISOString();
+
+        // 1. Get the repair document
+        const repair = await Repair.findOne({ _id });
+        if (!repair) {
+            return res.status(404).json({ error: 'Repair not found' });
+        }
+
+        // 2. Check if invoice already exists for this repair
+        const existingInvoice = await Invoice.findOne({ repair_id: _id });
+        if (existingInvoice) {
+            return res.status(400).json({ error: 'Invoice already exists for this repair' });
+        }
+
+        // 3. Filter reparation items where both status.mechanic and status.user are true
+        const validReparations = repair.reparation.filter(item => 
+            item.status.mechanic === true && item.status.user === true
+        );
+
+        if (validReparations.length === 0) {
+            return res.status(400).json({ error: 'No approved reparation items found' });
+        }
+
+        // 4. Calculate total
+        const total = validReparations.reduce((sum, item) => sum + item.price, 0);
+
+        // 5. Create invoice with new schema
+        const invoice = new Invoice({
+            repair_id: _id,  // Using repair _id as reference
+            owner: {
+                _id: repair.owner._id,
+                firstname: repair.owner.firstname,
+                lastname: repair.owner.lastname,
+                contact: repair.owner.contact
+            },
+            car: {
+                _id: repair.car._id,
+                brand: repair.car.brand,
+                model: repair.car.model
+            },
+            mechanic: {
+                _id: repair.mechanic._id,
+                firstname: repair.mechanic.firstname,
+                lastname: repair.mechanic.lastname,
+                contact: repair.mechanic.contact
+            },
+            reparation: validReparations.map(item => ({
+                type: item.type,
+                material: item.material,
+                price: item.price,
+                start: item.start,
+                end: item.end
+            })),
+            total,
+            date: currentDate
+        });
+
+        // 6. Save invoice and update repair
+        await invoice.save();
+        const updatedRepair = await Repair.findOneAndUpdate(
+            { _id },
+            { $set: { 'isfinished.user': true } },
+            { new: true }
+        );
+
+        res.json({
+            repair: updatedRepair,
+            invoice
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.getClientInvoices = async (req, res) => {
+    try {
+        const { car_id } = req.body;
+        const query = { 
+            'owner._id': req.user.id 
+        };
+        if (car_id) {
+            query['car._id'] = car_id;
+        }
+        
+        const invoices = await Invoice.find(query)
+            .sort({ date: -1 })
+            .exec();
+            
+        res.json(invoices);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.downloadInvoicePDF = async (req, res) => {
+    try {
+        const { invoice_id } = req.body;
+        
+        // Find the invoice
+        const invoice = await Invoice.findOne({ 
+            _id: invoice_id,
+            'owner._id': req.user.id // Ensure user owns this invoice
+        });
+        
+        if (!invoice) {
+            return res.status(404).json({ error: 'Invoice not found' });
+        }
+        
+        // Create PDF
+        const doc = new PDFDocument();
+        const filename = `invoice_${invoice._id}.pdf`;
+        
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        // Pipe PDF to response
+        doc.pipe(res);
+        
+        // Add content to PDF
+        doc.fontSize(20).text('Invoice', { align: 'center' });
+        doc.moveDown();
+        
+        // Customer info
+        doc.fontSize(12).text(`Customer: ${invoice.owner.firstname} ${invoice.owner.lastname}`);
+        doc.text(`Contact: ${invoice.owner.contact}`);
+        doc.moveDown();
+        
+        // Car info
+        doc.text(`Vehicle: ${invoice.car.brand} ${invoice.car.model}`);
+        doc.moveDown();
+        
+        // Reparations table header
+        doc.text('Reparations:', { underline: true });
+        doc.moveDown(0.5);
+        
+        // Reparations table rows
+        let yPos = doc.y;
+        invoice.reparation.forEach((item, index) => {
+            doc.text(`${index + 1}. ${item.type}`, 50, yPos);
+            doc.text(`$${item.price.toFixed(2)}`, 400, yPos, { width: 100, align: 'right' });
+            yPos += 25;
+        });
+        
+        // Total
+        doc.moveDown();
+        doc.text(`Total: $${invoice.total.toFixed(2)}`, { align: 'right' });
+        doc.moveDown();
+        
+        // Date
+        doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`);
+        
+        // Finalize PDF
+        doc.end();
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 };

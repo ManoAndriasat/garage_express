@@ -4,6 +4,10 @@ const { getNextId } = require("../utils/counterUtils");
 const RepairSchema = new mongoose.Schema({
     _id: { type: String },
     appointment_id: { type: String, required: true, unique: true },
+    isfinished: { 
+        mechanic: { type: Boolean, default: false },
+        user: { type: Boolean, default: false }
+    },
     owner: { 
         _id : { type: String },
         firstname: { type: String, required: true },

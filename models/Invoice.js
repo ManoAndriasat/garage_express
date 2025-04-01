@@ -3,16 +3,33 @@ const { getNextId } = require("../utils/counterUtils");
 
 const InvoiceSchema = new mongoose.Schema({
     _id: { type: String },
-    repair_id: { type: String, required: true },
-    date: { type: String, required: true },
-    car_id: { type: String, required: true },
-    mechanic_in_charge: { type: String, required: true },
-    details: [{
-        material: { type: String, required: true },
+    repair_id: { type: String, required: true, unique: true },
+    owner: { 
+        _id : { type: String },
+        firstname: { type: String, required: true },
+        lastname: { type: String, required: true },
+        contact: { type: String, required: true },
+    },
+    car: {
+        _id: { type: String },
+        brand: { type: String, required: true },
+        model: { type: String, required: true },
+    },
+    mechanic: {  
+        _id: { type: String, required: true },
+        firstname: { type: String, required: true },
+        lastname: { type: String, required: true },
+        contact: { type: String, required: true }
+    },
+    reparation: [{
         type: { type: String, required: true },
+        material: { type: String },
         price: { type: Number, required: true },
-        devis: { type: String, required: true }
-    }]
+        start: { type: String, required: true },
+        end: { type: String, required: true }
+    }],
+    total : { type: Number, required: true },
+    date: { type: String, required: true },
 }, { _id: false });
 
 InvoiceSchema.pre("save", async function (next) {
