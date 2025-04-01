@@ -291,7 +291,7 @@ exports.addReparation = async (req, res) => {
         const { repair_id, type, description, start, end, material, price } = req.body;
 
         // Validate required fields
-        if (!repair_id || !type || !description || !start || !end) {
+        if (!repair_id || !type ||  !start || !end) {
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields"
