@@ -659,30 +659,17 @@ exports.downloadInvoicePDF = async (req, res) => {
         doc.fontSize(fonts.body)
            .fillColor(colors.text)
            .font('Helvetica')
-           .text('Subtotal:', totalBoxX + 20, totalY + 15, { 
+           .text('total:', totalBoxX + 20, totalY + 15, { 
                width: 120, 
                align: 'right' 
            });
         
-        doc.text(`${subtotal.toFixed(2)} MGA`, totalBoxX + 140, totalY + 15, { 
+        doc.text(`${subtotal.toFixed(2)} MGA`, totalBoxX + 135, totalY + 15, { 
             width: 50, 
             align: 'right' 
         });
         
-        // Total with emphasis
-        doc.fontSize(fonts.emphasis)
-           .fillColor(colors.primary)
-           .font('Helvetica-Bold')
-           .text('TOTAL:', totalBoxX + 20, totalY + 35, { 
-               width: 120, 
-               align: 'right' 
-           });
-        
-        doc.text(`${invoice.total.toFixed(2)} MGA`, totalBoxX + 140, totalY + 35, { 
-            width: 50, 
-            align: 'right' 
-        });
-        
+
         // Page numbering
         const pages = doc.bufferedPageRange();
         for (let i = 0; i < pages.count; i++) {
