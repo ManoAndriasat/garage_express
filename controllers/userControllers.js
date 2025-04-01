@@ -462,29 +462,25 @@ exports.getClientInvoices = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
 exports.downloadInvoicePDF = async (req, res) => {
     try {
         const { invoice_id } = req.body;
         
-        // Find the invoice
         const invoice = await Invoice.findOne({ 
             _id: invoice_id,
-            'owner._id': req.user.id // Ensure user owns this invoice
+            'owner._id': req.user.id
         });
         
         if (!invoice) {
             return res.status(404).json({ error: 'Invoice not found' });
         }
         
-        // Create PDF
-        const doc = new PDFDocument({ size: 'A4', margin: 50 });
+        const doc = new PDFDocument({ size: 'A4', margin: 40 }); // Reduced margin
         const filename = `invoice_${invoice._id}.pdf`;
         
-        // Set response headers
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        
-        // Pipe PDF to response
         doc.pipe(res);
         
         // Colors
@@ -493,118 +489,99 @@ exports.downloadInvoicePDF = async (req, res) => {
         const darkColor = '#2c3e50';
         const lightColor = '#ecf0f1';
         
-        // Header with background
-        doc.rect(0, 0, doc.page.width, 80)
+        // Compact header
+        doc.rect(0, 0, doc.page.width, 60) // Smaller header
            .fill(primaryColor);
         
-        doc.fontSize(28)
+        doc.fontSize(24) // Slightly smaller font
            .fillColor('#fff')
            .text('INVOICE', { 
                align: 'center',
                width: doc.page.width - 100,
-               height: 80,
-               lineGap: 5
+               height: 60,
+               lineGap: 0
            });
         
-        // Invoice info section
-        doc.moveDown(2);
+        // Invoice info right next to header
         doc.fontSize(10)
            .fillColor(darkColor)
-           .text(`Invoice #: ${invoice._id}`, { align: 'right' });
-        doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, { align: 'right' });
+           .text(`Invoice #: ${invoice._id}`, 400, 70, { align: 'right' });
+        doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, 400, 85, { align: 'right' });
         
-        // Company info
-        doc.moveDown();
-        doc.fontSize(12)
-           .fillColor(darkColor)
-           .text('Your Company Name', { underline: true });
-        doc.text('123 Business Street');
-        doc.text('City, State 10001');
-        doc.text('Phone: (123) 456-7890');
-        doc.text('Email: contact@yourcompany.com');
+        // Company info - compact
+        doc.fontSize(10)
+           .text('Mano GARAGE', 50, 70);
+        doc.text('Phone: +261 34 33 733 51', 50, 85);
+        doc.text('Email: ma.andriasat@gmail.com', 50, 100);
         
-        // Customer info box
-        doc.moveDown();
-        doc.rect(50, doc.y, 250, 80)
+        // Customer and car info side by side with less padding
+        const infoBoxY = 120;
+        
+        // Customer info - compact
+        doc.rect(50, infoBoxY, 250, 60) // Smaller box
            .fill(lightColor);
-        
-        doc.fontSize(12)
-           .fillColor(darkColor)
-           .text('BILL TO:', 60, doc.y + 10, { underline: true });
         doc.fontSize(10)
-           .text(`${invoice.owner.firstname} ${invoice.owner.lastname}`, 60, doc.y + 30);
-        doc.text(`Contact: ${invoice.owner.contact}`, 60, doc.y + 45);
+           .fillColor(darkColor)
+           .text('BILL TO:', 60, infoBoxY + 10);
+        doc.fontSize(9)
+           .text(`${invoice.owner.firstname} ${invoice.owner.lastname}`, 60, infoBoxY + 25);
+        doc.text(`Contact: ${invoice.owner.contact}`, 60, infoBoxY + 40);
         
-        // Car info box
-        doc.rect(350, doc.y, 200, 80)
+        // Car info - compact
+        doc.rect(350, infoBoxY, 200, 60) // Smaller box
            .fill(lightColor);
-        
-        doc.fontSize(12)
-           .fillColor(darkColor)
-           .text('VEHICLE DETAILS:', 360, doc.y + 10, { underline: true });
         doc.fontSize(10)
-           .text(`${invoice.car.brand} ${invoice.car.model}`, 360, doc.y + 30);
-        // Add more car details if available
+           .text('VEHICLE DETAILS:', 360, infoBoxY + 10);
+        doc.fontSize(9)
+           .text(`${invoice.car.brand} ${invoice.car.model}`, 360, infoBoxY + 25);
         
-        // Reparations table
-        doc.moveDown(3);
-        doc.fontSize(14)
+        // Reparations table - tighter
+        const tableStartY = infoBoxY + 70;
+        doc.fontSize(12)
            .fillColor(secondaryColor)
-           .text('REPARATION DETAILS', { underline: true });
+           .text('REPARATION DETAILS', 50, tableStartY);
         
         // Table header
-        doc.moveDown(0.5);
-        doc.fontSize(10)
+        doc.fontSize(9)
            .fillColor('#fff')
-           .rect(50, doc.y, doc.page.width - 100, 20)
+           .rect(50, tableStartY + 20, doc.page.width - 100, 15) // Smaller header
            .fill(secondaryColor);
         
-        doc.text('No.', 60, doc.y + 5);
-        doc.text('Description', 100, doc.y + 5);
-        doc.text('Price', doc.page.width - 150, doc.y + 5, { width: 100, align: 'right' });
+        doc.text('No.', 60, tableStartY + 23);
+        doc.text('Description', 100, tableStartY + 23);
+        doc.text('Price', doc.page.width - 150, tableStartY + 23, { width: 100, align: 'right' });
         
-        // Table rows
-        let yPos = doc.y + 25;
+        // Table rows - tighter
+        let yPos = tableStartY + 40;
         invoice.reparation.forEach((item, index) => {
-            // Alternate row colors
             if (index % 2 === 0) {
-                doc.rect(50, yPos - 5, doc.page.width - 100, 20)
+                doc.rect(50, yPos - 8, doc.page.width - 100, 15) // Smaller rows
                    .fill('#f8f9fa');
             }
             
-            doc.fontSize(10)
+            doc.fontSize(9)
                .fillColor(darkColor)
                .text(`${index + 1}.`, 60, yPos);
             doc.text(item.type, 100, yPos);
             doc.text(`$${item.price.toFixed(2)}`, doc.page.width - 150, yPos, { width: 100, align: 'right' });
-            yPos += 20;
+            yPos += 15; // Smaller row height
         });
         
-        // Total section
-        doc.moveDown(2);
-        doc.rect(doc.page.width - 250, doc.y, 200, 30)
+        // Total section - compact
+        const totalY = yPos + 10;
+        doc.rect(doc.page.width - 250, totalY, 200, 20) // Smaller box
            .fill(lightColor);
         
-        doc.fontSize(12)
+        doc.fontSize(10)
            .fillColor(darkColor)
-           .text('Subtotal:', doc.page.width - 250, doc.y + 8, { width: 150, align: 'right' });
-        doc.text(`$${invoice.total.toFixed(2)}`, doc.page.width - 100, doc.y + 8, { width: 100, align: 'right' });
+           .text('TOTAL:', doc.page.width - 250, totalY + 5, { width: 150, align: 'right' });
+        doc.text(`$${invoice.total.toFixed(2)}`, doc.page.width - 100, totalY + 5, { width: 100, align: 'right' });
         
-        
-        doc.fontSize(14)
-           .fillColor(secondaryColor)
-           .text('TOTAL:', doc.page.width - 250, doc.y + 50, { width: 150, align: 'right', underline: true });
-        doc.fontSize(14)
-           .text(`$${invoice.total.toFixed(2)}`, doc.page.width - 100, doc.y + 50, { width: 100, align: 'right', underline: true });
-        
-        // Footer
-        doc.moveDown(4);
+        // Compact footer
         doc.fontSize(8)
            .fillColor('#7f8c8d')
-           .text('Thank you for your business!', { align: 'center' });
-        doc.text('Terms & Conditions: Payment due within 30 days.', { align: 'center' });
+           .text('Thank you for your business!', { align: 'center', y: doc.page.height - 30 });
         
-        // Finalize PDF
         doc.end();
         
     } catch (error) {
