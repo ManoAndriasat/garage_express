@@ -467,61 +467,111 @@ exports.downloadInvoicePDF = async (req, res) => {
     try {
         const { invoice_id } = req.body;
         
-        // Find the invoice
         const invoice = await Invoice.findOne({ 
             _id: invoice_id,
-            'owner._id': req.user.id // Ensure user owns this invoice
+            'owner._id': req.user.id
         });
         
         if (!invoice) {
             return res.status(404).json({ error: 'Invoice not found' });
         }
         
-        // Create PDF
-        const doc = new PDFDocument();
+        const doc = new PDFDocument({ size: 'A4', margin: 50 });
         const filename = `invoice_${invoice._id}.pdf`;
         
-        // Set response headers
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         
-        // Pipe PDF to response
         doc.pipe(res);
         
-        // Add content to PDF
-        doc.fontSize(20).text('Invoice', { align: 'center' });
-        doc.moveDown();
+        // Header with logo and title
+        doc.image('path/to/your/logo.png', 50, 45, { width: 50 })
+           .fillColor('#444444')
+           .fontSize(20)
+           .text('INVOICE', 200, 50, { align: 'right' })
+           .fontSize(10)
+           .text(`Invoice #${invoice.invoiceNumber}`, 200, 80, { align: 'right' })
+           .moveDown();
         
-        // Customer info
-        doc.fontSize(12).text(`Customer: ${invoice.owner.firstname} ${invoice.owner.lastname}`);
-        doc.text(`Contact: ${invoice.owner.contact}`);
-        doc.moveDown();
+        // Horizontal line
+        doc.strokeColor('#aaaaaa')
+           .lineWidth(1)
+           .moveTo(50, 120)
+           .lineTo(550, 120)
+           .stroke();
         
-        // Car info
-        doc.text(`Vehicle: ${invoice.car.brand} ${invoice.car.model}`);
-        doc.moveDown();
+        // Customer information
+        doc.fontSize(12)
+           .text('BILL TO:', 50, 140)
+           .font('Helvetica-Bold')
+           .text(`${invoice.owner.firstname} ${invoice.owner.lastname}`, 50, 160)
+           .font('Helvetica')
+           .text(invoice.owner.contact, 50, 180)
+           .text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, 400, 140, { align: 'right' });
+        
+        // Vehicle information
+        doc.moveTo(50, 220)
+           .lineTo(550, 220)
+           .stroke()
+           .font('Helvetica-Bold')
+           .text('VEHICLE DETAILS', 50, 230)
+           .font('Helvetica')
+           .text(`${invoice.car.brand} ${invoice.car.model} (${invoice.car.year})`, 50, 250)
+           .text(`VIN: ${invoice.car.vin || 'N/A'}`, 50, 270);
         
         // Reparations table header
-        doc.text('Reparations:', { underline: true });
-        doc.moveDown(0.5);
+        doc.moveTo(50, 310)
+           .lineTo(550, 310)
+           .stroke()
+           .font('Helvetica-Bold')
+           .text('#', 50, 320)
+           .text('DESCRIPTION', 100, 320)
+           .text('PRICE', 450, 320, { width: 100, align: 'right' })
+           .moveTo(50, 340)
+           .lineTo(550, 340)
+           .stroke();
         
-        // Reparations table rows
-        let yPos = doc.y;
+        // Reparations items
+        let y = 350;
         invoice.reparation.forEach((item, index) => {
-            doc.text(`${index + 1}. ${item.type}`, 50, yPos);
-            doc.text(`$${item.price.toFixed(2)}`, 400, yPos, { width: 100, align: 'right' });
-            yPos += 25;
+            doc.font('Helvetica')
+               .text(`${index + 1}`, 50, y)
+               .text(item.type, 100, y)
+               .text(`$${item.price.toFixed(2)}`, 450, y, { width: 100, align: 'right' });
+            
+            // Add description if exists
+            if (item.description) {
+                doc.font('Helvetica', 8)
+                   .fillColor('#666666')
+                   .text(item.description, 100, y + 15, { width: 350 })
+                   .fillColor('#444444');
+                y += 20;
+            }
+            
+            y += 30;
         });
         
-        // Total
-        doc.moveDown();
-        doc.text(`Total: $${invoice.total.toFixed(2)}`, { align: 'right' });
-        doc.moveDown();
+        // Total section
+        doc.moveTo(50, y)
+           .lineTo(550, y)
+           .stroke()
+           .font('Helvetica-Bold')
+           .text('SUBTOTAL', 350, y + 20)
+           .text(`$${invoice.subtotal.toFixed(2)}`, 450, y + 20, { width: 100, align: 'right' })
+           .text('TAX', 350, y + 40)
+           .text(`$${(invoice.total - invoice.subtotal).toFixed(2)}`, 450, y + 40, { width: 100, align: 'right' })
+           .moveTo(350, y + 60)
+           .lineTo(550, y + 60)
+           .stroke()
+           .fontSize(14)
+           .text('TOTAL', 350, y + 70)
+           .text(`$${invoice.total.toFixed(2)}`, 450, y + 70, { width: 100, align: 'right' });
         
-        // Date
-        doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`);
+        // Footer
+        doc.fontSize(8)
+           .text('Thank you for your business!', 50, 750, { align: 'center' })
+           .text('If you have any questions about this invoice, please contact us', 50, 770, { align: 'center' });
         
-        // Finalize PDF
         doc.end();
         
     } catch (error) {
