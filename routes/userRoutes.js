@@ -28,7 +28,7 @@ router.post('/login', login);
 
 router.get('/info', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), getUserInfo);
 router.post('/car', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), addCar);
-router.get('/cars', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), getAllCars);
+router.get('/cars', authMiddleware, getAllCars);
 router.get('/unavailable-slots/:mechanic_id', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), getMechanicUnavailableSlots);
 router.post('/appointment', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), requestAppointment);
 router.get('/appointments', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), getAppointments);

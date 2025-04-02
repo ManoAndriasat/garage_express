@@ -25,7 +25,7 @@ const {
 router.post('/register', register);
 router.post('/login', login);
 router.get('/info', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getInfo);
-router.get('/mechanics', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getMechanics);
+router.get('/mechanics', authMiddleware, getMechanics);
 router.get('/waiting-appointments', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getWaitingAppointments);
 router.get('/appointments', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getAppointments);
 router.get('/history-appointments', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getHistoryAppointments);
