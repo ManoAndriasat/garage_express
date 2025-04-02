@@ -9,6 +9,8 @@ const {
     login,
     getUserInfo,
     addCar,
+    deleteCar,
+    updateCar,
     getAllCars,
     getMechanicUnavailableSlots,
     requestAppointment,
@@ -20,7 +22,7 @@ const {
     getOngoingRepairs,
     finishRepair,
     getClientInvoices,
-downloadInvoicePDF,
+    downloadInvoicePDF,
 } = userControllers;
 
 router.post('/register', register);
@@ -28,6 +30,8 @@ router.post('/login', login);
 
 router.get('/info', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), getUserInfo);
 router.post('/car', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), addCar);
+router.delete('/delete-car', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), deleteCar);
+router.put('/update-car', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), updateCar);
 router.get('/cars', authMiddleware, getAllCars);
 router.get('/unavailable-slots/:mechanic_id', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), getMechanicUnavailableSlots);
 router.post('/appointment', authMiddleware, roleMiddleware([ROLES.CUSTOMER]), requestAppointment);

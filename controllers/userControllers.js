@@ -91,6 +91,51 @@ exports.addCar = async (req, res) => {
     }
 };
 
+exports.deleteCar = async (req, res) => {
+    try {
+        const { carId } = req.body;
+        if (!carId) {
+            return res.status(400).json({ msg: "Car ID is required" });
+        }
+        const car = await Car.findOne({ _id: carId, owner: req.user.id });
+        if (!car) {
+            return res.status(404).json({ msg: "Car not found or you don't have permission" });
+        }
+        await Car.findByIdAndDelete(carId);
+        await User.findByIdAndUpdate(req.user.id, { $pull: { cars: carId } });
+
+        res.status(200).json({ msg: "Car deleted successfully" });
+
+    } catch (err) {
+        console.error("Error deleting car:", err);
+        res.status(500).json({ 
+            msg: "Failed to delete car",
+            error: err.message 
+        });
+    }
+};
+
+exports.updateCar = async (req, res) => {
+    try {
+        const { carId, brand, model, year, type, vin } = req.body;
+
+        if (!carId) return res.status(400).json({ msg: "Car ID is required" });
+
+        const updatedCar = await Car.findByIdAndUpdate(
+            carId,
+            { brand, model, year, type, vin },
+            { new: true }
+        );
+
+        if (!updatedCar) return res.status(404).json({ msg: "Car not found" });
+
+        res.status(200).json({ msg: "Car updated successfully", car: updatedCar });
+    } catch (err) {
+        console.error("Error updating car:", err);
+        res.status(500).json({ msg: "Failed to update car", error: err.message });
+    }
+};
+
 exports.getAllCars = async (req, res) => {
     try {
         const cars = await Car.find({ owner: req.user.id });
