@@ -1,6 +1,6 @@
 const express = require('express');
 const mechanicControllers = require('../controllers/mechanicControllers');
-const { authMiddleware } = require('../middleware/authMiddleware');
+const { authMiddleware, roleMiddleware, ROLES } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -24,18 +24,18 @@ const {
 
 router.post('/register', register);
 router.post('/login', login);
-router.get('/info', authMiddleware, getInfo);
-router.get('/mechanics', authMiddleware, getMechanics);
-router.get('/waiting-appointments', authMiddleware, getWaitingAppointments);
-router.get('/appointments', authMiddleware, getAppointments);
-router.get('/history-appointments', authMiddleware, getHistoryAppointments);
-router.post('/validate-appointment', authMiddleware, validateAppointment);
-router.post('/delete-appointment', authMiddleware, deleteAppointment);
-router.post('/update-appointment-start-time', authMiddleware, updateAppointmentStartTime);
-router.post('/repair', authMiddleware, createRepair);
-router.get('/ongoing-repairs', authMiddleware, getOngoingRepairs);
-router.post('/add-reparation', authMiddleware, addReparation);
-router.post('/update-reparation', authMiddleware, updateReparation);
-router.post('/finish-repair', authMiddleware, finishRepair);
+router.get('/info', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getInfo);
+router.get('/mechanics', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getMechanics);
+router.get('/waiting-appointments', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getWaitingAppointments);
+router.get('/appointments', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getAppointments);
+router.get('/history-appointments', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getHistoryAppointments);
+router.post('/validate-appointment', authMiddleware, roleMiddleware([ROLES.MECHANIC]), validateAppointment);
+router.post('/delete-appointment', authMiddleware, roleMiddleware([ROLES.MECHANIC]), deleteAppointment);
+router.post('/update-appointment-start-time', authMiddleware, roleMiddleware([ROLES.MECHANIC]), updateAppointmentStartTime);
+router.post('/repair', authMiddleware, roleMiddleware([ROLES.MECHANIC]), createRepair);
+router.get('/ongoing-repairs', authMiddleware, roleMiddleware([ROLES.MECHANIC]), getOngoingRepairs);
+router.post('/add-reparation', authMiddleware, roleMiddleware([ROLES.MECHANIC]), addReparation);
+router.post('/update-reparation', authMiddleware, roleMiddleware([ROLES.MECHANIC]), updateReparation);
+router.post('/finish-repair', authMiddleware, roleMiddleware([ROLES.MECHANIC]), finishRepair);
 
 module.exports = router;
