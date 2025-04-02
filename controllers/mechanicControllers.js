@@ -289,53 +289,34 @@ exports.getOngoingRepairs = async (req, res) => {
 exports.addReparation = async (req, res) => {
     try {
         const { repair_id, type, description, start, end, material, price } = req.body;
+        if (!repair_id || !type || !start || !end) return res.status(400).json({ success: false, message: "Missing required fields" });
 
-        // Validate required fields
-        if (!repair_id || !type ||  !start || !end) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing required fields"
-            });
-        }
-        
-        const newReparation = {
-            type,
-            material: material || undefined,
-            description,
-            price,
-            status: {
-                mechanic: true,
-                user: false
-            },
-            start: new Date(start).toISOString(),
-            end: new Date(end).toISOString()
-        };
+        const startDate = new Date(start), endDate = new Date(end), now = new Date();
+        if (startDate >= endDate) return res.status(400).json({ success: false, message: "End date must be after start date" });
+        if (startDate < now) return res.status(400).json({ success: false, message: "Start date cannot be in the past" });
+
+        if (type === 'Replacement' && !material) return res.status(400).json({ success: false, message: "Material required for Replacement" });
+        if (type === 'Replacement' && price <= 100) return res.status(400).json({ success: false, message: "Price must be >100 for Replacement" });
+        if (price <= 0) return res.status(400).json({ success: false, message: "Price must be positive" });
 
         const updatedRepair = await Repair.findByIdAndUpdate(
             repair_id,
-            { $push: { reparation: newReparation } },
+            { $push: { 
+                reparation: { 
+                    type, material: material || undefined, description, price,
+                    status: { mechanic: true, user: false },
+                    start: startDate.toISOString(), end: endDate.toISOString()
+                } 
+            }},
             { new: true }
         );
 
-        if (!updatedRepair) {
-            return res.status(404).json({
-                success: false,
-                message: "Repair not found"
-            });
-        }
-
-        res.json({
-            success: true,
-            data: updatedRepair
-        });
+        if (!updatedRepair) return res.status(404).json({ success: false, message: "Repair not found" });
+        res.json({ success: true, data: updatedRepair });
 
     } catch (error) {
         console.error("Error adding reparation:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
 
