@@ -136,66 +136,61 @@ exports.requestAppointment = async (req, res) => {
     try {
         const { user, car, mechanic, date, start_time, end_time, localisation, problem } = req.body;
         
-        const mechanicExists = await Mechanic.findOne({ _id: mechanic._id });
-        if (!mechanicExists) {
-            console.log(`Mechanic not found with ID: ${mechanic._id}`);
-            return res.status(404).json({ msg: "Mechanic not found" });
+        // Validate required fields
+        const required = { user, car, mechanic, date, start_time, end_time, localisation };
+        for (const [field, value] of Object.entries(required)) {
+            if (!value) return res.status(400).json({ msg: `${field.replace('_', ' ')} is required` });
         }
-        
+        if (!problem?.length || problem.some(p => !p.description)) {
+            return res.status(400).json({ msg: "At least one problem description is required" });
+        }
 
-        const unavailableDay = mechanicExists.unavailableSlots.find(
-            slot => slot.date === date
-        );
+        // Validate times
+        const now = new Date();
+        const start = new Date(start_time);
+        const end = new Date(end_time);
+        if (start <= now) return res.status(400).json({ msg: "Appointment time must be in the future" });
+        if (end <= start) return res.status(400).json({ msg: "End time must be after start time" });
+
+        // Check mechanic exists
+        const mechanicExists = await Mechanic.findOne({ _id: mechanic._id });
+        if (!mechanicExists) return res.status(404).json({ msg: "Mechanic not found" });
         
-        if (unavailableDay) {
-            const isSlotUnavailable = unavailableDay.timeSlots.some(slot => 
-                (start_time >= slot.start && start_time < slot.end) ||
-                (end_time > slot.start && end_time <= slot.end) ||
-                (start_time <= slot.start && end_time >= slot.end)
+        // Check mechanic availability
+        const unavailable = mechanicExists.unavailableSlots.find(s => s.date === date)
+            ?.timeSlots.some(s => 
+                (start >= new Date(s.start) && start < new Date(s.end)) ||
+                (end > new Date(s.start) && end <= new Date(s.end)) ||
+                (start <= new Date(s.start) && end >= new Date(s.end))
             );
-            
-            if (isSlotUnavailable) {
-                return res.status(400).json({ msg: "This time slot is not available for this mechanic" });
-            }
-        }
-        
-        const existingAppointments = await Appointment.find({
-            user_id: req.user.id,
-            date: date,
+        if (unavailable) return res.status(400).json({ msg: "Time slot unavailable for this mechanic" });
+
+        // Check for existing appointments
+        const existing = await Appointment.findOne({
             $or: [
-                {
-                    start_time: { $lt: end_time },
-                    end_time: { $gt: start_time }
-                }
+                { 'user._id': user._id, $or: [{ start_time: { $lt: end_time }, end_time: { $gt: start_time } }] },
+                { 'mechanic._id': mechanic._id, $or: [{ start_time: { $lt: end_time }, end_time: { $gt: start_time } }] }
             ]
         });
-        
-        if (existingAppointments.length > 0) {
-            return res.status(400).json({ msg: "User already has an appointment at this time" });
+        if (existing) {
+            const msg = existing.user._id.toString() === user._id 
+                ? "You already have an appointment at this time" 
+                : "Mechanic is already booked at this time";
+            return res.status(400).json({ msg });
         }
         
-        const appointment = new Appointment({
-            user: user,
-            car: car,
-            mechanic:mechanic,
-            date: new Date(),
-            start_time: start_time,
-            end_time: end_time,
-            localisation: localisation,
-            problem: problem,
+        // Create appointment
+        const appointment = await Appointment.create({
+            user, car, mechanic, date, start_time, end_time, localisation,
+            problem: problem.map(p => ({ material: p.material || '', description: p.description })),
             status: { mechanic: false, user: true }
         });
         
-        await appointment.save();
-        
-        res.status(201).json({ 
-            msg: "Appointment requested successfully", 
-            appointment 
-        });
+        res.status(201).json({ msg: "Appointment requested successfully", appointment });
         
     } catch (err) {
-        console.error("Error while requesting an appointment:", err);
-        res.status(500).json({ error: err.message });
+        console.error("Error requesting appointment:", err);
+        res.status(500).json({ msg: "Internal server error", error: err.message });
     }
 };
 
