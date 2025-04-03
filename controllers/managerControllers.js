@@ -5,6 +5,7 @@ const Mechanic = require('../models/Mechanic');
 const Appointment = require('../models/Appointment');
 const Repair = require('../models/Repair');
 const Invoice = require('../models/Invoice');
+const ExistingCar = require('../models/ExistingCar');
 const moment = require('moment');
 
 exports.register = async (req, res) => {
@@ -138,6 +139,164 @@ exports.mechanicDelete = async (req, res) => {
         res.json({ msg: "Mechanic deleted successfully" });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createExistingCar = async (req, res) => {
+    try {
+        const { brand, model } = req.body;
+
+        let existingCar = await ExistingCar.findOne({ brand });
+
+        if (existingCar) {
+            const newModels = model.filter(m => !existingCar.model.includes(m));
+            if (newModels.length > 0) {
+                existingCar.model = [...existingCar.model, ...newModels];
+                await existingCar.save();
+                return res.status(200).json({ 
+                    success: true,
+                    message: "New models added to existing brand successfully",
+                    data: existingCar
+                });
+            }
+            return res.status(400).json({ 
+                success: false,
+                message: "Models already exist for this brand" 
+            });
+        }
+
+        existingCar = new ExistingCar({ brand, model });
+        await existingCar.save();
+        res.status(201).json({ 
+            success: true,
+            message: "Car brand and models created successfully",
+            data: existingCar
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to create car brand",
+            error: err.message 
+        });
+    }
+};
+
+exports.getExistingCars = async (req, res) => {
+    try {
+        const existingCars = await ExistingCar.find().sort({ brand: 1 });
+        res.json({ 
+            success: true,
+            message: existingCars.length > 0 
+                ? "Car brands retrieved successfully" 
+                : "No car brands found",
+            count: existingCars.length,
+            data: existingCars
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to retrieve car brands",
+            error: err.message 
+        });
+    }
+};
+
+exports.updateExistingCar = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { brand, model } = req.body;
+        
+        const existingCar = await ExistingCar.findById(id);
+        if (!existingCar) return res.status(404).json({ 
+            success: false,
+            message: "Car brand not found" 
+        });
+
+        if (brand && brand !== existingCar.brand) {
+            const brandExists = await ExistingCar.findOne({ brand });
+            if (brandExists) return res.status(400).json({ 
+                success: false,
+                message: "Brand already exists" 
+            });
+            existingCar.brand = brand;
+        }
+
+        if (model) {
+            existingCar.model = [...new Set([...existingCar.model, ...model])];
+        }
+
+        await existingCar.save();
+        res.json({ 
+            success: true,
+            message: "Car brand updated successfully",
+            data: existingCar
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to update car brand",
+            error: err.message 
+        });
+    }
+};
+
+exports.deleteExistingCar = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const existingCar = await ExistingCar.findByIdAndDelete(id);
+        
+        if (!existingCar) return res.status(404).json({ 
+            success: false,
+            message: "Car brand not found" 
+        });
+
+        res.json({ 
+            success: true,
+            message: "Car brand deleted successfully",
+            deletedBrand: existingCar.brand
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to delete car brand",
+            error: err.message 
+        });
+    }
+};
+
+exports.deleteExistingCarModel = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { model } = req.body;
+        
+        const existingCar = await ExistingCar.findById(id);
+        if (!existingCar) return res.status(404).json({ 
+            success: false,
+            message: "Car brand not found" 
+        });
+
+        const initialCount = existingCar.model.length;
+        existingCar.model = existingCar.model.filter(m => m !== model);
+        
+        if (existingCar.model.length === initialCount) {
+            return res.status(404).json({
+                success: false,
+                message: "Model not found in this brand"
+            });
+        }
+
+        await existingCar.save();
+        res.json({ 
+            success: true,
+            message: "Car model deleted successfully",
+            data: existingCar
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to delete car model",
+            error: err.message 
+        });
     }
 };
 

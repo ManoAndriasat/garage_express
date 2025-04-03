@@ -30,6 +30,7 @@ const initializeCounters = async () => {
       { _id: "appointment_id", sequence_value: 0 },
       { _id: "repair_id", sequence_value: 0 },
       { _id: "invoice_id", sequence_value: 0 },
+      { _id: "existing_car_id", sequence_value: 0 },
     ];
 
     for (const counter of counters) {
