@@ -47,7 +47,7 @@ exports.login = async (req, res) => {
                 role: 5
             },
             process.env.JWT_SECRET,
-            { expiresIn: "5h" }
+            { expiresIn: "20h" }
         );
         res.json({
             token,
@@ -291,7 +291,7 @@ exports.addReparation = async (req, res) => {
         const { repair_id, type, description, start, end, material, price } = req.body;
 
         // Validate required fields
-        if (!repair_id || !type || !description || !start || !end) {
+        if (!repair_id || !type ||  !start || !end) {
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields"
