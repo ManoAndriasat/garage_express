@@ -6,6 +6,7 @@ const Appointment = require('../models/Appointment');
 const Repair = require('../models/Repair');
 const Invoice = require('../models/Invoice');
 const ExistingCar = require('../models/ExistingCar');
+const Material = require('../models/Material');
 const moment = require('moment');
 
 exports.register = async (req, res) => {
@@ -295,6 +296,192 @@ exports.deleteExistingCarModel = async (req, res) => {
         res.status(500).json({ 
             success: false,
             message: "Failed to delete car model",
+            error: err.message 
+        });
+    }
+};
+
+exports.createMaterial = async (req, res) => {
+    try {
+        const { ref, name, price } = req.body;
+        
+        if (!name || !price) {
+            return res.status(400).json({ 
+                success: false,
+                message: "Name and price are required" 
+            });
+        }
+
+        if (price <= 0) {
+            return res.status(400).json({ 
+                success: false,
+                message: "Price must be a positive number" 
+            });
+        }
+
+        if (ref) {
+            const existingMaterial = await Material.findOne({ ref });
+            if (existingMaterial) {
+                return res.status(400).json({ 
+                    success: false,
+                    message: "Material with this reference already exists" 
+                });
+            }
+        }
+
+        const material = new Material({
+            ref,
+            name,
+            price,
+            priceHistory: [{ price }]
+        });
+
+        await material.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Material created successfully",
+            data: material
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to create material",
+            error: err.message 
+        });
+    }
+};
+
+exports.getMaterials = async (req, res) => {
+    try {
+        const materials = await Material.find().sort({ _id: 1 });
+        
+        res.json({
+            success: true,
+            message: materials.length > 0 
+                ? "Materials retrieved successfully" 
+                : "No materials found",
+            count: materials.length,
+            data: materials
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to retrieve materials",
+            error: err.message
+        });
+    }
+};
+
+exports.getMaterial = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const material = await Material.findById(id);
+        
+        if (!material) {
+            return res.status(404).json({ 
+                success: false,
+                message: "Material not found" 
+            });
+        }
+
+        let lastPriceEntry = null;
+        if (material.priceHistory && material.priceHistory.length > 0) {
+            lastPriceEntry = [...material.priceHistory].sort((a, b) => b.date - a.date)[0];
+        }
+
+        const materialWithLastPrice = {
+            ...material.toObject(),
+            lastPrice: lastPriceEntry ? lastPriceEntry.price : material.price,
+            lastPriceDate: lastPriceEntry ? lastPriceEntry.date : null
+        };
+
+        res.json({
+            success: true,
+            message: "Material retrieved successfully",
+            data: materialWithLastPrice
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to retrieve material",
+            error: err.message 
+        });
+    }
+};
+
+exports.updateMaterial = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { ref, name, price } = req.body;
+        
+        const material = await Material.findById(id);
+        if (!material) {
+            return res.status(404).json({ 
+                success: false,
+                message: "Material not found" 
+            });
+        }
+
+        if (ref && ref !== material.ref) {
+            const existingMaterial = await Material.findOne({ ref });
+            if (existingMaterial) {
+                return res.status(400).json({ 
+                    success: false,
+                    message: "Reference already used by another material" 
+                });
+            }
+        }
+
+        if (price && price !== material.price) {
+            material.priceHistory.push({ price });
+            material.price = price;
+        }
+
+        if (ref) material.ref = ref;
+        if (name) material.name = name;
+
+        await material.save();
+
+        res.json({
+            success: true,
+            message: "Material updated successfully",
+            data: material
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to update material",
+            error: err.message 
+        });
+    }
+};
+
+exports.deleteMaterial = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const material = await Material.findByIdAndDelete(id);
+        if (!material) {
+            return res.status(404).json({ 
+                success: false,
+                message: "Material not found" 
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Material deleted successfully",
+            deletedMaterial: {
+                _id: material._id,
+                name: material.name,
+                ref: material.ref
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false,
+            message: "Failed to delete material",
             error: err.message 
         });
     }

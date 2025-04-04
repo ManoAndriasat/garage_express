@@ -1,12 +1,16 @@
 const mongoose = require("mongoose");
 const { getNextId } = require("../utils/counterUtils");
+const { ref } = require("pdfkit");
 
 const MaterialSchema = new mongoose.Schema({
     _id: { type: String },
-    brand: { type: String },
-    model: { type: String },
+    ref: { type: String },
     name: { type: String, required: true },
-    price: { type: Number, required: true }
+    price: { type: Number, required: true },
+    priceHistory: [{
+        date: { type: Date, default: Date.now },
+        price: { type: Number }
+    }]
 }, { _id: false });
 
 MaterialSchema.pre("save", async function (next) {
